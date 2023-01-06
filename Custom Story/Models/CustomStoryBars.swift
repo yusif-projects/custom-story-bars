@@ -17,8 +17,8 @@ class CustomStoryBars: UIView {
     @IBInspectable public var horizontalMargins: CGFloat = 16
     @IBInspectable public var barHeight: CGFloat = 4
     
-    @IBInspectable public var numberOfStories: Int = 7
-    @IBInspectable public var currentStoryIndex: Int = 3
+    @IBInspectable public var numberOfStories: Int = 0
+    @IBInspectable public var currentStoryIndex: Int = 0
     
     @IBInspectable public var storyDuration: TimeInterval = 3
     @IBInspectable public var fps: TimeInterval = 30
@@ -35,8 +35,12 @@ class CustomStoryBars: UIView {
     
     public var storyChanged: ((Int) -> ())?
     
+    public var storyItems: [StoryItem] = []
+    
     override func draw(_ rect: CGRect) {
         super.draw(rect)
+        
+        numberOfStories = storyItems.count
         
         if !self.subviews.isEmpty {
             for subview in self.subviews {
@@ -60,12 +64,10 @@ class CustomStoryBars: UIView {
             
             if self.widthConstraints[self.currentStoryIndex].constant >= self.goalWidth {
                 if self.currentStoryIndex < self.numberOfStories - 1 {
-                    self.storyChanged?(self.currentStoryIndex)
-                    
                     self.currentStoryIndex = self.currentStoryIndex + 1
-                } else {
-                    self.storyChanged?(self.currentStoryIndex)
                     
+                    self.storyChanged?(self.currentStoryIndex)
+                } else {
                     t.invalidate()
                 }
             } else {
@@ -75,28 +77,49 @@ class CustomStoryBars: UIView {
         })
     }
     
-    public func previous() {
+    public func handleTap(_ sender: UITapGestureRecognizer) {
+        if sender.location(in: sender.view!).x >= sender.view!.frame.size.width / 2 {
+            self.next()
+        } else {
+            self.previous()
+        }
+    }
+    
+    public func handleHold(_ sender: UILongPressGestureRecognizer) {
+        switch sender.state {
+        case .ended, .cancelled, .failed:
+            self.start()
+        default:
+            self.stop()
+        }
+    }
+    
+    private func stop() {
+        timer.invalidate()
+    }
+    
+    private func previous() {
         if !timer.isValid {
             self.start()
         }
-        
-        self.storyChanged?(self.currentStoryIndex)
         
         if currentStoryIndex > 0 {
             widthConstraints[currentStoryIndex].constant = 0
             widthConstraints[currentStoryIndex - 1].constant = 0
             currentStoryIndex = currentStoryIndex - 1
+            
+            self.storyChanged?(self.currentStoryIndex)
         } else {
             widthConstraints[currentStoryIndex].constant = 0
         }
     }
     
-    public func next() {
-        self.storyChanged?(self.currentStoryIndex)
-        
+    private func next() {
         if currentStoryIndex < numberOfStories - 1 {
             widthConstraints[currentStoryIndex].constant = goalWidth
             currentStoryIndex = currentStoryIndex + 1
+            
+            self.storyChanged?(self.currentStoryIndex)
         } else {
             widthConstraints[currentStoryIndex].constant = goalWidth
         }
@@ -172,4 +195,16 @@ class CustomStoryBars: UIView {
         }
     }
     
+}
+
+public struct StoryItem {
+    var title: String!
+    var description: String!
+    var image: UIImage!
+    
+    init(title: String!, description: String!, image: UIImage!) {
+        self.title = title
+        self.description = description
+        self.image = image
+    }
 }
